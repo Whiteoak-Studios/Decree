@@ -9,7 +9,3 @@ Decree is licensed under the Apache License 2.0, in `LICENSE`. It includes code 
 ## Status
 
 Design phase. There is no code and no release yet.
-
-## Knowledge base
-
-The design, the plan and the standards live in the Obsidian vault at `KB/`, starting at `KB/Core.md`. `KB/` is gitignored, so the vault exists only in the project folder, not in the repo.
