@@ -1,13 +1,13 @@
 --[[
     The bounds Decree's own correctness needs on both realms: the byte and
     count bounds Schemas/Decree.volt declares, which these match, the list
-    and frame caps the server keeps under Volt's, and a server half's wait
+    and frame caps the server keeps under Volt's, and a command half's wait
 --]]
 
 --!strict
 local LINE_BYTES: number = 4096 -- The longest typed line run carries, and the longest autoExec line
 local TEXT_BYTES: number = 16384 -- The longest reply or printed line
-local PENDING_SECONDS: number = 9 -- How long a server half's Promise may stay pending, inside run's 10-second timeout
+local PENDING_SECONDS: number = 9 -- How long a half's Promise may stay pending, a server half's inside run's 10 seconds
 local LIST_BYTES: number = 131072 -- The largest command list the server sends, leaving room for a frame's lines
 local LIST_COMMANDS: number = 512 -- The most commands one list holds
 local FRAME_BYTES: number = 65536 -- The bytes of lines one player is sent in a frame before the rest wait a frame
