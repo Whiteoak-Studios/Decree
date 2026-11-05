@@ -1,7 +1,7 @@
 --[[
-    Loads Decree's src/ and Cmdr 1.13.1's Cmdr/ fresh for each case under a
-    fake game, script, require and task, with stubbed services, Promise and
-    dressed players on Volt's mock, and further clients of the same server
+    Loads Decree's src/ fresh for each case under a fake game, script,
+    require and task, with stubbed services, Promise and dressed players on
+    Volt's mock, and further clients of the same server
 --]]
 
 --!strict
@@ -17,7 +17,7 @@ local VoltHub = require("@volt/Hub")
 local VoltMock = require("@volt/Mock")
 
 -- Each folder a case requires from, and the module it mounts as in ServerPackages, where a game installs Decree
-local ROOTS: { [string]: string } = { Cmdr = "Cmdr", src = "Decree" }
+local ROOTS: { [string]: string } = { src = "Decree" }
 local INIT: string = "init.luau"
 local MODULE_FILE: string = "^(.+)%.luau$" -- A file's name or path without its extension
 local STEM: string = "([^/]+)%.luau$" -- A further file's name without its folders or extension
@@ -34,13 +34,6 @@ local PLAYER: string = "Player" -- The Name of the one player each environment j
 local FRAME: number = 1 / 60 -- Seconds between the fake Heartbeat's frames
 local ROUND_TRIP: number = 3 -- Mock steps a client's call takes to settle: one to send, one to answer, one to hear
 local QUIET: string = "--quiet" -- Keeps volt to its errors when compile runs it
-
--- Cmdr 1.13.1's modules and folders cmdr builds its object from, by their paths without the extension
-local CMDR_CLIENT: string = "Cmdr/CmdrClient"
-local CMDR_TYPES: string = "Cmdr/BuiltInTypes"
-local CMDR_UTIL: string = "Cmdr/CmdrClient/Shared/Util"
-local CMDR_REGISTRY: string = "Cmdr/CmdrClient/Shared/Registry"
-local CMDR_DISPATCHER: string = "Cmdr/CmdrClient/Shared/Dispatcher"
 
 -- The Roblox globals the loaded files build with, which Lune provides
 local DATATYPES: { string } = {
@@ -113,10 +106,9 @@ export type Options = {
 }
 
 export type Environment = {
-	require: (target: any) -> any, -- A ModuleScript's module, or a mounted file's by its path, such as Cmdr/init
+	require: (target: any) -> any, -- A ModuleScript's module, or a mounted file's by its path, such as src/Guards
 	find: (path: string) -> any, -- What a file mounted as, by its path without the extension, or a folder, by its path
 	connect: (transport: Transport, player: any) -> Environment, -- A further client of this server's mock
-	cmdr: () -> any, -- Cmdr 1.13.1's own object on this side, its built-in types registered
 	game: any, -- The fake game every loaded file sees
 	mock: Mock, -- The network the generated modules run over
 	player: Player, -- The player whose client transport a client module runs on
@@ -128,16 +120,6 @@ local Dressed: { [any]: string } = setmetatable({}, { __mode = "k" })
 local Environment = {
 	ROUND_TRIP = ROUND_TRIP,
 }
-
---[[
-    Rewrites each const that starts a line, after any indentation, to
-    local, since Lune 0.10.5's Luau cannot parse const. Every line stays
-    where it was, so an error still names the right one
---]]
-
-function Environment.rewrite(source: string): string
-	return (`\n{source}`):gsub("\n([ \t]*)const([ \t])", "\n%1local%2"):sub(2)
-end
 
 --[[
     Compiles a test schema with the pinned volt binary, after making the
@@ -243,7 +225,7 @@ local function isA(object: any, className: string): boolean
 end
 
 --[[
-    Dresses a player who joins the mock for the Instance checks Cmdr makes,
+    Dresses a player who joins the mock for the Instance checks Decree makes,
     with a DisplayName, a PlayerGui, IsA and WaitForChild; a bot stays the
     plain table the mock makes it
 --]]
@@ -320,9 +302,8 @@ local function build(given: Options, world: World, player: Player, transport: Tr
 	local paths: { [string]: any } = {} -- Each mounted file's module and mounted folder, by its path from the repo root
 	local globals: { [string]: any } = {
 		task = task,
-		workspace = dataModel:GetService("Workspace"),
 
-		-- A dressed player or team reads as an Instance, as the checks Cmdr makes expect
+		-- A dressed player or team reads as an Instance, as the checks Decree makes expect
 		typeof = function (value: any): string
 			return Dressed[value] and "Instance" or typeof(value)
 		end,
@@ -561,8 +542,8 @@ local function build(given: Options, world: World, player: Player, transport: Tr
 			return load(type(target) == "string" and resolve(module, target) or target)
 		end
 
-		local source: string = Environment.rewrite(record.source :: string)
-		local chunk: (...any) -> ...any = luau.load(source, { debugName = record.path, environment = scope })
+		local chunk: (...any) -> ...any =
+			luau.load(record.source :: string, { debugName = record.path, environment = scope })
 		local results: { n: number, [number]: any } = table.pack(chunk())
 		assert(results.n == 1, `{record.path} returned {results.n} values, where a module returns exactly one`)
 
@@ -683,44 +664,11 @@ local function build(given: Options, world: World, player: Player, transport: Tr
 		mount(directory:match(FOLDER_NAME) :: string, replicatedStorage, directory)
 	end
 
-	local cmdrObject: any = nil -- Built at the first ask only, since Cmdr's Registry and Dispatcher keep module state
-
-	--[[
-	    Cmdr 1.13.1's own object on this environment's side, built as its
-	    bootstrap builds it, without the remotes and the window Lune cannot
-	    run: Util, the Registry, the Dispatcher and the built-in types
-	--]]
-
-	local function cmdr(): any
-		if cmdrObject then
-			return cmdrObject
-		end
-
-		local root: any = find(CMDR_CLIENT)
-		folder("Commands", root)
-		folder("Types", root)
-
-		local object: { [string]: any } = {
-			Util = load(find(CMDR_UTIL)),
-			_replicatedRoot = root,
-			_events = {}, -- The handlers a client's events reach, as CmdrClient keeps them
-		}
-
-		object.Registry = load(find(CMDR_REGISTRY))(object)
-		object.Dispatcher = load(find(CMDR_DISPATCHER))(object)
-		object.Registry:RegisterTypesIn(find(CMDR_TYPES))
-
-		cmdrObject = object
-
-		return object
-	end
-
 	return {
 		game = game,
 		mock = mock,
 		player = player,
 		find = find,
-		cmdr = cmdr,
 
 		require = function (target: any): any
 			return load(type(target) == "string" and find(target) or target)

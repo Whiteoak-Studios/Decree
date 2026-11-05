@@ -1,7 +1,6 @@
 --[[
-    TextService, TeleportService, Teams and HttpService answer what Cmdr and
-    Decree call them for, from what a case sets, and loaded code reads the
-    environment's own Workspace
+    TextService, TeleportService, Teams and HttpService answer what Decree
+    calls them for, from what a case sets
 --]]
 
 --!strict
@@ -9,8 +8,6 @@ local roblox: any = require("@lune/roblox") -- Its typedefs leave out the dataty
 
 local Environment = require("../../Environment")
 
-local HAS_CHARACTER: string = "Cmdr/CmdrClient/Shared/BuiltInGuards/HasCharacter"
-local NO_CHARACTER: string = "Target player has no character." -- HasCharacter's refusal for a target with none
 local SECOND: string = "Second"
 local TEXT: string = "hello there"
 local HIDDEN: string = "#####" -- What the case's filter makes of a text for anyone but its sender
@@ -83,30 +80,6 @@ return function (): (boolean, string | nil)
 	local decoded: { any } = httpService:JSONDecode(JSON)
 	if decoded[1] ~= 1 or decoded[2] ~= "two" or pcall(httpService.JSONDecode, httpService, BROKEN_JSON) then
 		return false, "JSONDecode answered wrongly"
-	end
-
-	-- HasCharacter checks another player's character on a client only while the Workspace does not stream
-	local guard: any = env.require(HAS_CHARACTER)(1)
-	local context: { [string]: any } = {
-		Executor = env.player,
-
-		GetArgument = function (_: any): any
-			return {
-				GetValue = function (_: any): any
-					return second
-				end,
-			}
-		end,
-	}
-
-	local refusal: any = guard(context)
-	if refusal ~= NO_CHARACTER then
-		return false, `HasCharacter answered {refusal} with streaming off`
-	end
-
-	env.game:GetService("Workspace").StreamingEnabled = true
-	if guard(context) ~= nil then
-		return false, "HasCharacter did not read the environment's Workspace"
 	end
 
 	return true, nil

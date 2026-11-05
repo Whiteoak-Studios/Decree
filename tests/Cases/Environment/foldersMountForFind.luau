@@ -11,8 +11,8 @@ local FIXTURE: string = ".volt/src/Config" -- Modules with no init.luau, in a fo
 local NAME: string = "Config" -- FIXTURE's last segment, the name Rojo gives it
 local LEAF: string = `{FIXTURE}/Runtime`
 local NESTED: string = `{FIXTURE}/Types/Contract` -- Requires its sibling ./Runtime, which requires ./Send
-local ROOT_FOLDER: string = "Cmdr/BuiltInTypes"
-local ROOT_MODULE: string = "Cmdr/CmdrClient" -- A folder holding an init.luau, which mounts as a ModuleScript
+local ROOT_FOLDER: string = "src/DecreeClient/Shared/Types"
+local ROOT_MODULE: string = "src/DecreeClient" -- A folder holding an init.luau, which mounts as a ModuleScript
 
 return function (): (boolean, string | nil)
 	local env: any = Environment.new({ folders = { FIXTURE } })

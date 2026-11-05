@@ -1,7 +1,7 @@
 --[[
     Formats every .luau file under Decree's own roots with StyLua, then
     restores the space after an anonymous function's keyword, which StyLua
-    removes and the house style keeps. Cmdr/ and a missing root are skipped
+    removes and the house style keeps. A missing root is skipped
 --]]
 
 --!strict

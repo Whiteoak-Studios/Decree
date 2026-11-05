@@ -30,7 +30,6 @@ local FOREIGN: { [string]: boolean } = {
 	Packages = true,
 	DevPackages = true,
 	[".volt"] = true,
-	Cmdr = true,
 }
 
 -- The word list's rows, each British spelling with the endings its words take
