@@ -1,0 +1,3 @@
+src/Network.luau
+src/DecreeClient/Network.luau
+src/DecreeClient/Shared/Wire.luau

@@ -1,6 +1,3 @@
 std = "roblox"
 
-[lints]
-unused_variable = "warn"
-unused_function = "warn"
-shadowing = "warn"
+exclude = ["Packages/**", "ServerPackages/**", "DevPackages/**"]

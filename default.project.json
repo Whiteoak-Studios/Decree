@@ -1,6 +1,6 @@
 {
-	"name": "Cmdr",
+	"name": "Decree",
 	"tree": {
-		"$path": "Cmdr"
+		"$path": "src"
 	}
 }

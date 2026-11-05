@@ -15,3 +15,10 @@ globalTypes.d.luau
 *.rbxlx.lock
 Open-Decisions.md
 graphify-out/
+.volt/
+wally.lock
+.env
+.env.*
+*.pem
+*.key
+auth.toml
