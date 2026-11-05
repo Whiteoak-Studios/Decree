@@ -276,7 +276,8 @@ end
 
 --[[
     The server's run past the hooks and guards: the confirmation question
-    when the port asks one, or else what the server half answers
+    when the port asks one, or else what the server half answers, which
+    rejects when the half raises
 --]]
 
 local function runOnServer(context: Self): any
@@ -300,7 +301,25 @@ local function runOnServer(context: Self): any
 		return Promise.resolve(NO_IMPLEMENTATION, INFO)
 	end
 
-	return settle(context, runHalf(context, run))
+	return Promise.try(function (): any
+		return settle(context, runHalf(context, run))
+	end)
+end
+
+--[[
+    The afterRun hooks hear a reply as the context's response, and the
+    first one to answer replaces it as Info
+--]]
+
+local function afterRun(context: Self, ...: any): ...any
+	context.response = (...)
+
+	local replaced: string? = runHooks(context, AFTER_RUN)
+	if replaced then
+		return replaced, INFO
+	end
+
+	return ...
 end
 
 --[[
@@ -328,8 +347,10 @@ end
 
 --- Runs the validated command. On the server the beforeRun hooks run,
 --- then the guards, the port's confirmation and the server half, then the
---- afterRun hooks, whose first answer replaces the reply. On the client the
---- device half runs, or else the line goes to the server.
+--- afterRun hooks, whose first answer replaces the reply. A server half
+--- that raises, rejects or stays pending warns once and reaches the
+--- afterRun hooks with the Error reply. On the client the device half
+--- runs, or else the line goes to the server.
 --- @method run
 --- @within Context
 --- @return Promise -- Resolves with the reply's text and its kind
@@ -351,14 +372,9 @@ function Command.run(self: Self): any
 	end
 
 	return runOnServer(self):andThen(function (...: any): ...any
-		self.response = (...)
-
-		local replaced: string? = runHooks(self, AFTER_RUN)
-		if replaced then
-			return replaced, INFO
-		end
-
-		return ...
+		return afterRun(self, ...)
+	end, function (problem: any): ...any
+		return afterRun(self, self.dispatcher:_fail(self.rawText, problem))
 	end)
 end
 

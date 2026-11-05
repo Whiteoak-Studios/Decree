@@ -11,6 +11,7 @@ local EVERY_UNIT: string = "" -- A text every unit's name starts with
 local COMPONENT: string = "-?%d+%a+" -- A number and its unit, such as 6h
 local COMPONENT_PARTS: string = "(-?%d+)(%a+)"
 local NUMBER: string = "-?%d+"
+local STRAY: string = "%S" -- Anything but a space
 local ENDING_UNIT: string = "^.*-?%d+(%a+)%s?$" -- The unit typed last, after its number
 local MINUTES_ALONE: string = "m" -- An m alone is minutes, though Months starts with it too
 local FROM_START: boolean = true -- Finds only the unit names a text starts
@@ -42,8 +43,8 @@ local findUnits: (text: string, returnFirst: boolean?, matchStart: boolean?) -> 
 --[[
     Adds a text's numbers and units up to seconds, giving the seconds, the
     last number typed and whether that number still lacks its unit. The
-    seconds are nil for a text it refuses, a zero or negative sum among
-    them, and 0 for a bare 0
+    seconds are nil for a text it refuses, a zero sum and a text holding
+    more than numbers, units and spaces among them, and 0 for a bare 0
 --]]
 
 local function readSeconds(text: string): (number?, number?, boolean?)
@@ -55,7 +56,13 @@ local function readSeconds(text: string): (number?, number?, boolean?)
 		return 0, 0, true
 	end
 
-	local missingUnit: string? = (text:gsub(COMPONENT, NONE)):match(NUMBER)
+	-- A word or mark left once the numbers and units are out, as in 1h foo, is no unit
+	local leftover: string = (text:gsub(COMPONENT, NONE))
+	if (leftover:gsub(NUMBER, NONE)):match(STRAY) then
+		return nil, nil, nil
+	end
+
+	local missingUnit: string? = leftover:match(NUMBER)
 	if missingUnit then
 		return nil, tonumber(missingUnit), true
 	end
@@ -81,7 +88,7 @@ local function readSeconds(text: string): (number?, number?, boolean?)
 		seconds += unitSeconds * amount
 	end
 
-	if seconds <= 0 then
+	if seconds == 0 then
 		return nil, nil, nil
 	end
 
@@ -126,7 +133,7 @@ local Definitions: { [string]: TypeDefinition } = {
 				return {}
 			end
 
-			-- A stray last word, as in 1h foo, leaves no unit being typed
+			-- More than one trailing space leaves no unit being typed
 			local endingUnit: string? = rawText:match(ENDING_UNIT)
 			if not endingUnit then
 				return {}

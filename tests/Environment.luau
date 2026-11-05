@@ -48,6 +48,7 @@ local DATATYPES: { string } = {
 	"CFrame",
 	"Color3",
 	"Enum",
+	"Font",
 	"Instance",
 	"UDim",
 	"UDim2",

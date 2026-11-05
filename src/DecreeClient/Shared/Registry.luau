@@ -17,6 +17,14 @@ local DEVICE_HALF: string = "Client" -- Follows a command's name in the name of 
 local HALVES: { string } = { SERVER_HALF, DEVICE_HALF }
 local DEFAULT_PRIORITY: number = 0
 local UNION_STEP: number = 2 -- A union alternates its types with the prefixes that pick them
+local NONE: string = "" -- What the server's list carries for text a definition leaves out
+local NAME_BYTES: number = require("./Constants").NAME_BYTES
+local TYPE_BYTES: number = require("./Constants").TYPE_BYTES
+local DESCRIPTION_BYTES: number = require("./Constants").DESCRIPTION_BYTES
+local ARGUMENT_DESCRIPTION_BYTES: number = require("./Constants").ARGUMENT_DESCRIPTION_BYTES
+local LINE_BYTES: number = require("./Constants").LINE_BYTES
+local LIST_ENTRIES: number = require("./Constants").LIST_ENTRIES
+local ARGUMENTS: number = require("./Constants").ARGUMENTS
 
 -- The names Decree's own commands keep, which no game command may take
 local RESERVED: { [string]: true } = Util.makeDictionary({ "confirm", "clear" })
@@ -58,6 +66,28 @@ local MOVED_KEYS: { [string]: string } = {
 	data = "is removed: the server half reads what it needs on the server",
 }
 
+-- Each text field's bytes and each list of text's entries on the wire, by what holds them
+local COMMAND_BOUNDS: { [string]: Bound } = {
+	name = { least = 1, most = NAME_BYTES },
+	aliases = { least = 1, most = NAME_BYTES, entries = LIST_ENTRIES },
+	description = { least = 0, most = DESCRIPTION_BYTES },
+	group = { least = 1, most = NAME_BYTES, optional = true },
+	system = { least = 1, most = NAME_BYTES, optional = true },
+	tags = { least = 1, most = NAME_BYTES, entries = LIST_ENTRIES },
+	autoExec = { least = 1, most = LINE_BYTES, entries = LIST_ENTRIES },
+}
+
+local SUBCOMMAND_BOUNDS: { [string]: Bound } = {
+	name = { least = 1, most = NAME_BYTES },
+	description = { least = 0, most = DESCRIPTION_BYTES },
+}
+
+local ARGUMENT_BOUNDS: { [string]: Bound } = {
+	name = { least = 1, most = NAME_BYTES },
+	type = { least = 1, most = TYPE_BYTES },
+	description = { least = 0, most = ARGUMENT_DESCRIPTION_BYTES },
+}
+
 local Types = require("./Config/Types/Command")
 local Wire = require("./Wire")
 
@@ -75,6 +105,13 @@ type WireCommands = Wire.Decree_Commands
 type HookEntry = {
 	callback: Hook,
 	priority: number,
+}
+
+type Bound = {
+	least: number, -- The fewest bytes the text, or each text of the list, takes
+	most: number, -- The most bytes the same text takes
+	entries: number?, -- The most entries the field holds, when it is a list
+	optional: boolean?, -- Whether the wire carries the field left out, where other text left out counts as empty
 }
 
 --- @class Registry
@@ -234,12 +271,39 @@ function Registry.bind(self: Self, access: Access)
 end
 
 --[[
-    Raises an error for an argument list holding anything but plain tables,
-    each with known keys and its type named by text, or holding a required
-    argument after an optional one
+    Raises an error naming where a field is when the wire would refuse it:
+    text outside its bytes, or a list past its entries or holding such text
+--]]
+
+local function checkBounds(where: string, entry: { [string]: any }, bounds: { [string]: Bound })
+	for field: string, bound: Bound in bounds do
+		local value: any = entry[field]
+		if value == nil and bound.optional then
+			continue
+		end
+
+		-- Left out, a list is sent empty and other text as NONE, as the server's list carries them
+		local entries: number? = bound.entries
+		local texts: { any } = entries and (value or {}) or { value or NONE }
+		assert(entries == nil or #texts <= entries, `[Decree] {where} holds {#texts} {field}, past {entries}`)
+
+		for index: number, text: any in texts do
+			local label: string = entries and `{field} #{index}` or field
+			local fits: boolean = type(text) == "string" and #text >= bound.least and #text <= bound.most
+			assert(fits, `[Decree] {where}'s {label} is not text of {bound.least} to {bound.most} bytes`)
+		end
+	end
+end
+
+--[[
+    Raises an error for an argument list past the wire's bounds or holding
+    anything but plain tables, each with known keys and its type named by
+    text, or holding a required argument after an optional one
 --]]
 
 local function checkArguments(command: string, arguments: { any })
+	assert(#arguments <= ARGUMENTS, `[Decree] Command "{command}" holds {#arguments} args, past {ARGUMENTS}`)
+
 	local hadOptional: boolean = false
 
 	for index: number, argument: any in arguments do
@@ -264,15 +328,22 @@ local function checkArguments(command: string, arguments: { any })
 		)
 
 		hadOptional = hadOptional or optional
+		checkBounds(`Command "{command}" argument #{index}`, argument, ARGUMENT_BOUNDS)
 	end
 end
 
 --[[
-    Raises an error for a subcommand list holding anything but plain
-    subcommands with known keys and plain arguments, or one name twice
+    Raises an error for a subcommand list past the wire's bounds or holding
+    anything but plain subcommands with known keys and plain arguments, or
+    one name twice
 --]]
 
 local function checkSubcommands(command: string, subcommands: { any })
+	assert(
+		#subcommands <= LIST_ENTRIES,
+		`[Decree] Command "{command}" holds {#subcommands} subcommands, past {LIST_ENTRIES}`
+	)
+
 	local names: { [string]: true } = {}
 
 	for index: number, subcommand: any in subcommands do
@@ -287,15 +358,16 @@ local function checkSubcommands(command: string, subcommands: { any })
 		assert(not names[name:lower()], `[Decree] Command "{command}" holds the subcommand {name} twice`)
 
 		names[name:lower()] = true
+		checkBounds(`Command "{command}" subcommand #{index}`, subcommand, SUBCOMMAND_BOUNDS)
 		checkArguments(`{command} {name}`, subcommand.args or {})
 	end
 end
 
 --- Registers a command definition on the server, after handing it to the
 --- access check. A definition holds known keys only, plain arguments with
---- no required one after an optional one, and args or subcommands but
---- never both, and no word that finds it may find another command or one
---- of Decree's own.
+--- no required one after an optional one, args or subcommands but never
+--- both, and text and lists inside the wire's bounds, and no word that
+--- finds it may find another command or one of Decree's own.
 --- @method registerCommandObject
 --- @within Registry
 --- @server
@@ -347,6 +419,7 @@ function Registry.registerCommandObject(self: Self, definition: CommandDefinitio
 	end
 
 	checkArguments(name, definition.args or {})
+	checkBounds(`Command "{name}"`, definition :: { [string]: any }, COMMAND_BOUNDS)
 
 	-- Every word that finds the command, its name first
 	local words: { string } = { name:lower() }

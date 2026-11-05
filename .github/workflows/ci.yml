@@ -20,9 +20,6 @@ jobs:
           cache: true
       - run: wally install
       - run: lune run volt
-      - name: Mount dev/
-        # Whiteoak TODO: drop once dev/ is committed; Rojo refuses dev.project.json while its dev path is missing
-        run: mkdir -p dev
       - run: rojo sourcemap dev.project.json --output sourcemap.json
       - run: wally-package-types --sourcemap sourcemap.json Packages/
       - run: curl -sSfL https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/main/scripts/globalTypes.d.luau -o globalTypes.d.luau

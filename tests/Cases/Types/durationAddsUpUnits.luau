@@ -1,7 +1,7 @@
 --[[
     The duration type adds each number and unit up to seconds, m alone being
-    minutes, refuses a number left without a unit, a fraction or a zero or
-    negative sum, and completes the unit being typed
+    minutes and a negative sum kept, refuses a number left without a unit, a
+    fraction or a zero sum, and completes the unit being typed
 --]]
 
 --!strict
@@ -10,7 +10,7 @@ local Environment = require("../../Environment")
 local TYPES: string = "src/DecreeClient/Shared/Types/Duration"
 local TYPE: string = "duration"
 local LISTABLE: string = "durations"
-local REFUSED: { string } = { "", "1", "5x", "0s", "1d6", "1.5h", "abc", "-5s" }
+local REFUSED: { string } = { "", "1", "5x", "0s", "1d6", "1.5h", "abc" }
 local REFUSAL: string = "Invalid duration format. Example: 1d6h, 30m, 10s."
 local LISTED: string = "30m"
 local LISTED_SECONDS: number = 1800
@@ -28,6 +28,7 @@ local READS: { Read } = {
 	{ text = "2w", seconds = 1209600 },
 	{ text = "1mo", seconds = 2629744 },
 	{ text = "1y2mo", seconds = 36816414 },
+	{ text = "-5s", seconds = -5 },
 }
 
 -- Each text whose last unit is being typed, and what it completes to, in sorted order
@@ -38,6 +39,7 @@ local COMPLETIONS: { Completion } = {
 	{ text = "2M", suggestions = { "2Minutes", "2Months" } },
 	{ text = "1d6h", suggestions = { "1d6hours" } },
 	{ text = "5x", suggestions = {} },
+	{ text = "-5s", suggestions = { "-5seconds" } },
 }
 
 -- Each text ending in a number with no unit, and every unit it completes to, in any order and singular after 1

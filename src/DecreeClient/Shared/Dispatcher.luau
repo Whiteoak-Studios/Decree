@@ -148,7 +148,7 @@ end
 --- client the executor is the LocalPlayer, and on the server a run with
 --- no executor is refused. A thrown error, a parse error and a server or
 --- device half that rejects, or is still pending after PENDING_SECONDS,
---- answer Error.
+--- answer Error, which a server afterRun hook may replace for the half.
 --- @method evaluateAndRun
 --- @within Dispatcher
 --- @param text string
@@ -182,10 +182,19 @@ function Dispatcher.evaluateAndRun(self: Self, text: string, executor: Player?):
 			return tostring(response), kindOf(kind)
 		end)
 		:catch(function (problem: any): (string, Kind)
-			warn(`[Decree] Error occurred while evaluating command string {QUOTED:format(text)}\n{problem}`)
-
-			return ERROR_REPLY, ERROR
+			return self:_fail(text, problem)
 		end)
+end
+
+--[[
+    Warns of the problem a line ran into and gives its Error reply, for the
+    dispatcher's own catch and for the server half a command ran
+--]]
+
+function Dispatcher._fail(self: Self, text: string, problem: any): (string, Kind)
+	warn(`[Decree] Error occurred while evaluating command string {QUOTED:format(text)}\n{problem}`)
+
+	return ERROR_REPLY, ERROR
 end
 
 --[[

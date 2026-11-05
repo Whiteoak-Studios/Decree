@@ -18,7 +18,14 @@
 				"$path": "Packages",
 				"Decree": { "$path": "src" }
 			},
-			"Dev": { "$path": "dev" }
+			"Dev": { "$path": "dev/Server" }
+		},
+		"StarterPlayer": {
+			"$className": "StarterPlayer",
+			"StarterPlayerScripts": {
+				"$className": "StarterPlayerScripts",
+				"Dev": { "$path": "dev/Client" }
+			}
 		}
 	}
 }

@@ -1,7 +1,7 @@
 --[[
     A run, guard or beforeRun hook that throws is answered with the error
-    text as an Error line, the afterRun hooks never reached, and the
-    dispatcher keeps running the lines that follow
+    text as an Error line, the afterRun hooks reached only from the run,
+    and the dispatcher keeps running the lines that follow
 --]]
 
 --!strict
@@ -56,17 +56,17 @@ return function (): (boolean, string | nil)
 	})
 
 	local failed: string, failedKind: string = core.run(FAILING, player)
-	if failed ~= ERROR_REPLY or failedKind ~= ERROR or afterRuns ~= 0 then
+	if failed ~= ERROR_REPLY or failedKind ~= ERROR or afterRuns ~= 1 then
 		return false, `a run that threw answered {failed} as {failedKind}, reaching afterRun {afterRuns} times`
 	end
 
 	local echoed: string, echoedKind: string = core.run(ECHO_LINE, player)
-	if echoed ~= ECHOED or echoedKind ~= INFO or afterRuns ~= 1 then
+	if echoed ~= ECHOED or echoedKind ~= INFO or afterRuns ~= 2 then
 		return false, `the line after the throw answered {echoed}`
 	end
 
 	local guarded: string, guardedKind: string = core.run(GUARDED, player)
-	if guarded ~= ERROR_REPLY or guardedKind ~= ERROR or afterRuns ~= 1 then
+	if guarded ~= ERROR_REPLY or guardedKind ~= ERROR or afterRuns ~= 2 then
 		return false, `a guard that threw answered {guarded}`
 	end
 
@@ -75,7 +75,7 @@ return function (): (boolean, string | nil)
 	end)
 
 	local hooked: string, hookedKind: string = core.run(ECHO_LINE, player)
-	if hooked ~= ERROR_REPLY or hookedKind ~= ERROR or afterRuns ~= 1 then
+	if hooked ~= ERROR_REPLY or hookedKind ~= ERROR or afterRuns ~= 2 then
 		return false, `a beforeRun hook that threw answered {hooked}`
 	end
 
