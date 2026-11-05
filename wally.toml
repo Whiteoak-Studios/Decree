@@ -1,18 +1,26 @@
 [package]
-name = "evaera/cmdr"
-description = "A fully extensible, type-safe command framework for Roblox."
-version = "1.13.1"
-license = "MIT"
+name = "fadeluc-123/decree"
+description = "Whiteoak's fork of Cmdr, on Volt"
+version = "0.1.0"
 registry = "https://github.com/UpliftGames/wally-index"
-homepage = "https://eryn.io/Cmdr/"
-repository = "https://github.com/evaera/Cmdr"
-realm = "shared"
+realm = "server"
+license = "Apache-2.0"
+
 exclude = ["**"]
 include = [
-  "assets", "assets/**",
-  "Cmdr", "Cmdr/**",
-  "CHANGELOG.md", "LICENSE", "README.md", "SECURITY.md",
-  "wally.toml", "default.project.json"
+	"src",
+	"src/**",
+	"default.project.json",
+	"wally.toml",
+	"README.md",
+	"CHANGELOG.md",
+	"SECURITY.md",
+	"LICENSE",
+	"NOTICE",
 ]
 
 [dependencies]
+Promise = "evaera/promise@4.0.0"
+
+[dev-dependencies]
+Volt = "fadeluc-123/volt@0.1.0"

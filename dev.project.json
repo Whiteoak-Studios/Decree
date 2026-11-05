@@ -1,0 +1,31 @@
+{
+	"name": "Decree",
+	"servePlaceIds": [85443513853201],
+	"servePort": 34876,
+	"tree": {
+		"$className": "DataModel",
+		"Players": {
+			"$properties": { "CharacterAutoLoads": false }
+		},
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "Packages",
+				"Volt": { "$path": ".volt/src" }
+			}
+		},
+		"ServerScriptService": {
+			"ServerPackages": {
+				"$path": "Packages",
+				"Decree": { "$path": "src" }
+			},
+			"Dev": { "$path": "dev/Server" }
+		},
+		"StarterPlayer": {
+			"$className": "StarterPlayer",
+			"StarterPlayerScripts": {
+				"$className": "StarterPlayerScripts",
+				"Dev": { "$path": "dev/Client" }
+			}
+		}
+	}
+}

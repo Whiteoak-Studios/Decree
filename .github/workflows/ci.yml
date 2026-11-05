@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: CompeyDev/setup-rokit@v0.2.1
+        with:
+          version: v1.2.0
+          cache: true
+      - run: wally install
+      - run: lune run volt
+      - run: rojo sourcemap dev.project.json --output sourcemap.json
+      - run: wally-package-types --sourcemap sourcemap.json Packages/
+      - run: curl -sSfL https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/main/scripts/globalTypes.d.luau -o globalTypes.d.luau
+      - name: Format
+        run: lune run format && git diff --exit-code
+      - name: Lint
+        run: selene src tests dev
+      - name: Analyze
+        # .luaurc's lune alias names the typedefs lune setup writes under the home folder, and setup rewrites .luaurc
+        run: |
+          lune setup
+          git checkout -- .luaurc
+          luau-lsp analyze --platform=roblox --flag:LuauSolverV2=true --sourcemap=sourcemap.json --definitions=globalTypes.d.luau --ignore="Packages/**" --ignore="DevPackages/**" --ignore=".volt/**" --formatter=gnu src tests dev
+      - name: Compile
+        run: volt --check Schemas/Decree.volt
+      - name: Tests
+        run: lune run tests
+      - name: Spelling
+        run: lune run spelling
+
+  publish:
+    needs: check
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: CompeyDev/setup-rokit@v0.2.1
+        with:
+          version: v1.2.0
+      - name: Tag must match wally.toml version
+        run: |
+          v=$(grep -m1 '^version' wally.toml | cut -d'"' -f2)
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != wally.toml $v"; exit 1; }
+      - run: wally login --token "${{ secrets.WALLY_AUTH }}"
+      - run: wally publish
+      - name: The public index must list the tagged version
+        run: |
+          v=$(grep -m1 '^version' wally.toml | cut -d'"' -f2)
+          head=$(git ls-remote https://github.com/UpliftGames/wally-index HEAD | cut -f1)
+          curl -sSfL "https://raw.githubusercontent.com/UpliftGames/wally-index/$head/fadeluc-123/decree" | grep -qF "\"version\":\"$v\"" || { echo "fadeluc-123/decree $v is not in the index"; exit 1; }
